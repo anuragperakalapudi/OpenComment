@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import {
-  isGeminiConfigured,
+  isLLMConfigured,
   isSupabaseConfigured,
 } from "@/lib/config";
-import { generate } from "@/lib/llm/client";
+import { currentModel, generate } from "@/lib/llm/client";
 import { generateWithGate } from "@/lib/llm/postprocess";
 import { buildLongSummaryPrompt } from "@/lib/llm/prompts/longSummary";
 import {
@@ -16,14 +16,12 @@ import {
 } from "@/lib/db/cache";
 import type { Regulation } from "@/lib/types";
 
-const MODEL = "gemini-2.5-flash" as const;
-
 interface RequestBody {
   regulation: Regulation;
 }
 
 export async function POST(req: Request) {
-  if (!isGeminiConfigured) {
+  if (!isLLMConfigured) {
     return NextResponse.json({ error: "not_configured" }, { status: 501 });
   }
   const body = (await req.json()) as RequestBody;
@@ -57,7 +55,7 @@ export async function POST(req: Request) {
       generateWithGate(
         (attempt) =>
           generate(longPrompt.prompt, {
-            model: MODEL,
+            task: "fast",
             systemInstruction: longPrompt.systemInstruction,
             temperature: 0.4 + attempt * 0.1,
             maxOutputTokens: 1200,
@@ -65,7 +63,7 @@ export async function POST(req: Request) {
         { maxRetries: 1 },
       ),
       generate(provisionsPrompt.prompt, {
-        model: MODEL,
+        task: "fast",
         systemInstruction: provisionsPrompt.systemInstruction,
         temperature: 0.3,
         maxOutputTokens: 800,
@@ -81,7 +79,7 @@ export async function POST(req: Request) {
           docketId: reg.docketId,
           longSummary: longResult.text,
           keyProvisions: provisions,
-          modelVersion: MODEL,
+          modelVersion: currentModel("fast"),
         });
       } catch {
         // non-fatal: return uncached
@@ -91,7 +89,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       longSummary: longResult.text,
       keyProvisions: provisions,
-      model: MODEL,
+      model: currentModel("fast"),
       cached: false,
     });
   } catch (err) {

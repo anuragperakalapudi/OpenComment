@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { buildRegulationsUrl, mapApiResponse } from "@/lib/regulationsApi";
 import {
-  isGeminiConfigured,
+  isLLMConfigured,
   isSupabaseConfigured,
 } from "@/lib/config";
-import { generate } from "@/lib/llm/client";
+import { currentModel, generate } from "@/lib/llm/client";
 import { generateWithGate } from "@/lib/llm/postprocess";
 import { buildShortSummaryPrompt } from "@/lib/llm/prompts/shortSummary";
 import {
@@ -24,13 +24,12 @@ function isAuthorized(req: Request): boolean {
 
 const MAX_GENERATIONS_PER_RUN = 80;
 const MAX_EMBEDDINGS_PER_RUN = 80;
-const MODEL = "gemini-2.5-flash" as const;
 
 export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!isGeminiConfigured || !isSupabaseConfigured) {
+  if (!isLLMConfigured || !isSupabaseConfigured) {
     return NextResponse.json(
       { error: "not_configured" },
       { status: 501 },
@@ -69,7 +68,7 @@ export async function GET(req: Request) {
       const result = await generateWithGate(
         () =>
           generate(prompt, {
-            model: MODEL,
+            task: "fast",
             systemInstruction,
             temperature: 0.5,
             maxOutputTokens: 120,
@@ -80,7 +79,7 @@ export async function GET(req: Request) {
         documentId: reg.id,
         docketId: reg.docketId,
         shortSummary: result.text,
-        modelVersion: MODEL,
+        modelVersion: currentModel("fast"),
       });
       generated++;
     } catch {

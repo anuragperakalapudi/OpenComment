@@ -12,7 +12,7 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import type { RankingSignal, ScoredRegulation } from "@/lib/types";
-import { formatDeadline, matchPercent } from "@/lib/ranking";
+import { formatDeadline, matchPercent, type WhyReason } from "@/lib/ranking";
 import { AgencyBadge } from "@/components/shared/AgencyBadge";
 
 export function RegulationCard({
@@ -24,6 +24,7 @@ export function RegulationCard({
   onToggleSaved,
   signal = null,
   onSetSignal,
+  whyReasons,
 }: {
   reg: ScoredRegulation;
   topicCount: number;
@@ -33,6 +34,7 @@ export function RegulationCard({
   onToggleSaved: (documentId: string) => void;
   signal?: RankingSignal | null;
   onSetSignal?: (signal: RankingSignal | null) => void;
+  whyReasons?: WhyReason[];
 }) {
   const pct = matchPercent(reg.baseScore, topicCount);
   const deadline = formatDeadline(reg.commentEndDate);
@@ -123,6 +125,19 @@ export function RegulationCard({
         <p className="mt-3 line-clamp-3 text-[15px] leading-relaxed text-ink-600">
           {reg.summary}
         </p>
+
+        {whyReasons && whyReasons.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {whyReasons.map((r) => (
+              <span
+                key={r.key}
+                className="inline-flex items-center rounded-full border border-rule bg-cream-50 px-2.5 py-1 text-xs text-ink-600"
+              >
+                {r.text}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="mt-5 flex items-center justify-between gap-4 border-t border-rule pt-4">
           <div className="flex flex-wrap items-center gap-1.5">

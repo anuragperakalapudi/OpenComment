@@ -12,6 +12,18 @@ export const isSupabaseConfigured =
 
 export const isGeminiConfigured = !!process.env.GEMINI_API_KEY;
 
+export const isGroqConfigured = !!process.env.GROQ_API_KEY;
+export const isMistralConfigured = !!process.env.MISTRAL_API_KEY;
+
+// True if any text-generation provider is ready. Use this to gate LLM routes.
+// (isGeminiConfigured is kept separate for embedding-only gates in semantic.ts.)
+export const isLLMConfigured =
+  isGeminiConfigured || isGroqConfigured || isMistralConfigured;
+
+export const LLM_PROVIDER = (
+  process.env.LLM_PROVIDER ?? "gemini"
+) as "gemini" | "groq" | "mistral";
+
 export const isResendConfigured = !!process.env.RESEND_API_KEY;
 
 export const RESEND_FROM_EMAIL =

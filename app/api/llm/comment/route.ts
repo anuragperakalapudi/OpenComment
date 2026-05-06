@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { currentUserId } from "@/lib/auth";
 import {
   isClerkConfigured,
-  isGeminiConfigured,
+  isLLMConfigured,
   isSupabaseConfigured,
 } from "@/lib/config";
 import { listStories } from "@/lib/db/stories";
-import { generate } from "@/lib/llm/client";
+import { currentModel, generate } from "@/lib/llm/client";
 import { generateWithGate } from "@/lib/llm/postprocess";
 import {
   buildCommentPrompt,
@@ -21,8 +21,6 @@ interface RequestBody {
   variant: CommentVariant;
 }
 
-const MODEL = "gemini-2.5-flash" as const;
-
 async function relevantStoriesFor(regulation: Regulation) {
   if (!isClerkConfigured || !isSupabaseConfigured) return [];
   const userId = await currentUserId();
@@ -35,7 +33,7 @@ async function relevantStoriesFor(regulation: Regulation) {
 }
 
 export async function POST(req: Request) {
-  if (!isGeminiConfigured) {
+  if (!isLLMConfigured) {
     return NextResponse.json({ error: "not_configured" }, { status: 501 });
   }
   const body = (await req.json()) as RequestBody;
@@ -55,7 +53,7 @@ export async function POST(req: Request) {
     const result = await generateWithGate(
       (attempt) =>
         generate(prompt, {
-          model: MODEL,
+          task: "quality",
           systemInstruction,
           // Higher temperature on retries to escape repeating bad output.
           temperature: 0.7 + attempt * 0.1,
@@ -68,7 +66,7 @@ export async function POST(req: Request) {
       text: result.text,
       flags: result.flags,
       ok: result.ok,
-      model: MODEL,
+      model: currentModel("quality"),
     });
   } catch (err) {
     return NextResponse.json(

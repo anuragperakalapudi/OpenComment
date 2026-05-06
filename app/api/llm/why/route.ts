@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { currentUserId } from "@/lib/auth";
 import {
   isClerkConfigured,
-  isGeminiConfigured,
+  isLLMConfigured,
   isSupabaseConfigured,
 } from "@/lib/config";
 import {
@@ -12,13 +12,11 @@ import {
 import { getProfile } from "@/lib/db/profiles";
 import { listStories } from "@/lib/db/stories";
 import { buildWhyContextHash, WHY_PROMPT_VERSION } from "@/lib/embeddingInputs";
-import { generate } from "@/lib/llm/client";
+import { currentModel, generate } from "@/lib/llm/client";
 import { generateWithGate } from "@/lib/llm/postprocess";
 import { buildWhyInFeedPrompt } from "@/lib/llm/prompts/whyInFeed";
 import { selectRelevantStories } from "@/lib/stories";
 import type { Regulation, UserProfile } from "@/lib/types";
-
-const MODEL = "gemini-2.5-flash" as const;
 
 interface RequestBody {
   regulation: Regulation;
@@ -96,7 +94,7 @@ export async function POST(req: Request) {
     }
   }
 
-  if (!isGeminiConfigured) {
+  if (!isLLMConfigured) {
     return NextResponse.json({ error: "not_configured" }, { status: 501 });
   }
 
@@ -111,7 +109,7 @@ export async function POST(req: Request) {
     const result = await generateWithGate(
       (attempt) =>
         generate(prompt, {
-          model: MODEL,
+          task: "fast",
           systemInstruction,
           temperature: 0.6 + attempt * 0.1,
           maxOutputTokens: 300,
@@ -126,7 +124,7 @@ export async function POST(req: Request) {
           text: result.text,
           flags: result.flags,
           contextHash,
-          modelVersion: MODEL,
+          modelVersion: currentModel("fast"),
         });
       } catch {
         // Non-fatal. The caller still gets the fresh explanation.

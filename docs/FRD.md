@@ -1,8 +1,8 @@
 # OpenComment — Functional Requirements Document (FRD)
 
 **Project Type:** Production product (post-hackathon)
-**Version:** 1.0
-**Last Updated:** April 25, 2026
+**Version:** 1.1
+**Last Updated:** May 6, 2026
 **Supersedes:** Public Comment Amplifier FRD v0.1 (hackathon)
 
 ---
@@ -242,15 +242,24 @@ All LLM calls go through `lib/llm.ts`. Every surface has a tuned system prompt a
 
 **Surfaces:**
 
-| Surface | Model | Cached |
+| Surface | Task tier | Cached |
 |---|---|---|
-| One-line feed summary | Gemini Flash | Per-document, forever |
-| Detail page summary (3 paragraphs) | Gemini Pro | Per-document, forever |
-| Key provisions list | Gemini Pro | Per-document, forever |
-| "Why this is in your feed" | Gemini Flash | Per (user, document), 30-day TTL |
-| Comment draft | Gemini Pro | Per (user, document, variant), 30-day TTL |
-| Comment edit-check (Phase 4) | Gemini Pro | Not cached |
-| Adaptive interview (Phase 3) | Gemini Flash | Conversation in session memory only |
+| One-line feed summary | Fast (Flash-class) | Per-document, forever |
+| Detail page summary (3 paragraphs) | Fast (Flash-class) | Per-document, forever |
+| Key provisions list | Fast (Flash-class) | Per-document, forever |
+| "Why this is in your feed" | Fast (Flash-class) | Per (user, document), 30-day TTL |
+| Comment draft | Quality (Pro-class) | Per (user, document, variant), 30-day TTL |
+| Comment edit-check (Phase 4) | Quality (Pro-class) | Not cached |
+| Adaptive interview (Phase 3) | Fast (Flash-class) | Conversation in session memory only |
+
+Model mapping per provider (set via `LLM_PROVIDER` env var):
+
+| Task tier | Gemini (default) | Groq (free) | Mistral (free) |
+|---|---|---|---|
+| Fast | gemini-2.5-flash | llama-3.1-8b-instant | mistral-small-latest |
+| Quality | gemini-2.5-pro | llama-3.3-70b-versatile | mistral-medium-latest |
+
+Embeddings (`text-embedding-004`) are always Gemini regardless of `LLM_PROVIDER`.
 
 **Prompt engineering:** every prompt is version-controlled, every output is logged with prompt version + model version + temperature for review. Bad outputs are collected and used to refine prompts.
 
@@ -300,14 +309,14 @@ All LLM calls go through `lib/llm.ts`. Every surface has a tuned system prompt a
 ### 4.5 Reliability
 
 - 99.5% uptime target (Vercel + Supabase + Upstash all give us this floor)
-- Graceful degradation: if Gemini is down, show cached summaries and a notice; if regulations.gov is down, show our DB snapshot with a clear "showing yesterday's data" banner
+- Graceful degradation: if the configured LLM provider is down, show cached summaries and a notice; provider is switchable via `LLM_PROVIDER` env var without code changes. If no LLM provider is configured, all `/api/llm/*` routes return 501 gracefully. If regulations.gov is down, show our DB snapshot with a clear "showing yesterday's data" banner.
 - All emails idempotent: a retried cron job never sends duplicates
 
 ### 4.6 Privacy & security
 
 - All data encrypted at rest (Supabase default) and in transit (TLS)
 - API keys server-side only (already done in hackathon, verify)
-- LLM provider data policy reviewed: no training on our prompts/outputs
+- LLM provider data policy reviewed for whichever provider is configured: Google, Groq, and Mistral all have documented no-training-on-API-requests policies
 - No third-party analytics that profile users (PostHog self-hosted or privacy-mode)
 - Cookies: only essentials. Banner only if/when we add anything beyond auth.
 - Privacy policy and terms of service drafted by counsel before public launch
@@ -333,8 +342,9 @@ All LLM calls go through `lib/llm.ts`. Every surface has a tuned system prompt a
 | Auth | Clerk | Magic-link out of the box, low friction. Supabase Auth acceptable alternative. |
 | Database | Supabase Postgres + pgvector | Cheap, generous free tier, built-in row-level security, vector support without a second service. |
 | Cache | Upstash Redis | Replaces in-memory cache (which doesn't survive Vercel cold starts). Free tier covers us. |
-| LLM | Gemini 2.5 Pro (drafting) + 2.5 Flash (summaries) | Good price/performance, generous free tier for low volume, prompt caching support. |
-| Embeddings | Gemini text-embedding-004 | Same provider, single billing. |
+| LLM text generation | Gemini 2.5 Pro/Flash (default) · Groq (Llama 3.3 70B / 3.1 8B) · Mistral (Medium/Small) | Configurable via `LLM_PROVIDER` env var. Groq (14,400 req/day free) and Mistral (1B tokens/month free) are always-free fallbacks requiring no credit card. |
+| Embeddings | Gemini text-embedding-004 | Gemini-only; no equivalent free alternative. Gated separately from text-gen provider. |
+| LLM SDK | `@google/generative-ai` + `openai` (OpenAI-compat) | Single `openai` package covers Groq and Mistral via `baseURL` override. |
 | Email | Resend + React Email | Modern, developer-friendly, RFC 8058 unsubscribe support. |
 | Cron | Vercel Cron | Already on Vercel. Fine for nightly snapshots, digest sends, final-rule polling. |
 | Styling | Tailwind + CSS variables | Carryover. |
@@ -521,6 +531,7 @@ To resolve before each phase begins:
 | Domain name | 1 | `opencomment.org` |
 | Email digest defaults | 2 | Sunday 9am local, 5 rules |
 | Embedding provider | 3 | Gemini text-embedding-004 |
+| LLM provider for production | 1 | Gemini (existing) for launch; Groq as no-cost fallback |
 | Direct submission shipping | 4 | Defer until Phase 1-3 telemetry suggests value > risk |
 
 ---
@@ -551,3 +562,5 @@ A pitch for the production launch:
 ---
 
 *This FRD supersedes the v0.1 hackathon document. Changes vs v0.1: scope expanded from demo to production; comment generation moved from templates to LLM with strict anti-AI-tell discipline; auth, DB, email, lifecycle tracking, and embeddings added; mock fallback removed; privacy framing promoted from §4 detail to first-class commitment in §1.*
+
+*Changes in v1.1 (May 6, 2026): LLM layer made provider-agnostic. Added Groq (Llama 3.3 70B / 3.1 8B) and Mistral (Medium/Small) as always-free text-generation alternatives selectable via `LLM_PROVIDER` env var. Embeddings remain Gemini-only. Tech stack updated to reflect `openai` npm package for OpenAI-compatible providers. Free-tier personalization (occupation/freeText scoring, profile flags, story tag boost, graduated urgency, deterministic why-in-feed reasons) implemented and reflected in §3.10.*

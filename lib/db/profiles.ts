@@ -1,4 +1,4 @@
-import type { UserProfile } from "../types";
+import type { ProfileFlag, UserProfile } from "../types";
 import { parseVector, vectorToSql } from "../embeddingInputs";
 import { supabaseAdmin } from "./client";
 
@@ -13,6 +13,7 @@ interface DbProfileRow {
   topics: string[];
   free_text_context: string | null;
   additional_states: string[] | null;
+  profile_flags: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +37,7 @@ function rowToProfile(row: DbProfileRow): UserProfile {
     topics: (row.topics ?? []) as UserProfile["topics"],
     freeTextContext: row.free_text_context ?? undefined,
     additionalStates: row.additional_states ?? [],
+    profileFlags: (row.profile_flags ?? []) as ProfileFlag[],
     createdAt: row.created_at,
   };
 }
@@ -95,6 +97,7 @@ export async function upsertProfile(
         topics: profile.topics,
         free_text_context: profile.freeTextContext ?? null,
         additional_states: profile.additionalStates ?? [],
+        profile_flags: profile.profileFlags ?? [],
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },

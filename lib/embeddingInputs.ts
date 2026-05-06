@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { PROFILE_FLAG_LABELS } from "./types";
 import type { Regulation, Story, UserProfile } from "./types";
 
 export const EMBEDDING_MODEL = "text-embedding-004";
@@ -80,6 +81,9 @@ export function buildProfileEmbeddingInput(
     profile.freeTextContext
       ? `Other context: ${profile.freeTextContext}`
       : "",
+    profile.profileFlags?.length
+      ? `Identity context: ${profile.profileFlags.map((f) => PROFILE_FLAG_LABELS[f]).join(", ")}`
+      : "",
     storyText ? `Stories:\n${storyText}` : "",
   ]
     .filter(Boolean)
@@ -103,6 +107,7 @@ export function buildWhyContextHash(input: {
       topics: input.profile.topics,
       freeTextContext: input.profile.freeTextContext ?? "",
       additionalStates: input.profile.additionalStates ?? [],
+      profileFlags: input.profile.profileFlags ?? [],
     },
     matchedTopics: input.matchedTopics,
     stories: input.stories.map((story) => ({

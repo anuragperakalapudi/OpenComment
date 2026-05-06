@@ -6,12 +6,13 @@ import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { useProfile } from "@/context/ProfileContext";
 import {
+  buildWhyReasons,
   deriveWeights,
   rankRegulations,
   daysUntil,
   matchPercent,
 } from "@/lib/ranking";
-import type { Regulation, ScoredRegulation, Topic } from "@/lib/types";
+import type { Regulation, ScoredRegulation, Story, Topic } from "@/lib/types";
 import { ALL_TOPICS, US_STATE_NAMES } from "@/lib/types";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 import {
@@ -93,6 +94,8 @@ export default function FeedPage() {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  const [stories, setStories] = useState<Story[]>([]);
+
   // Hoist save/commented hooks once at the page level so each card doesn't
   // independently fetch + double-fire under React StrictMode.
   const { isSaved, toggle: toggleSaved } = useSavedRegulations();
@@ -105,6 +108,20 @@ export default function FeedPage() {
       router.replace("/onboarding");
     }
   }, [hydrated, profile, router]);
+
+  // Load user stories for ranking boost and "why" reasons
+  useEffect(() => {
+    if (!profile) return;
+    fetch("/api/stories")
+      .then(async (r) => {
+        if (!r.ok) return;
+        const json = (await r.json()) as { stories: Story[] };
+        setStories(json.stories ?? []);
+      })
+      .catch(() => {
+        // Stories are a best-effort boost; never block the feed.
+      });
+  }, [profile]);
 
   // Initial base-pool load (no search query)
   useEffect(() => {
@@ -219,17 +236,17 @@ export default function FeedPage() {
   const rankedBaseRegulations = useMemo(
     () =>
       profile
-        ? rankRegulations(baseRegulations, profile, feedbackWeights)
+        ? rankRegulations(baseRegulations, profile, feedbackWeights, stories)
         : [],
-    [baseRegulations, feedbackWeights, profile],
+    [baseRegulations, feedbackWeights, profile, stories],
   );
 
   const rankedSearchResults = useMemo(
     () =>
       profile && searchResults
-        ? rankRegulations(searchResults, profile, feedbackWeights)
+        ? rankRegulations(searchResults, profile, feedbackWeights, stories)
         : null,
-    [feedbackWeights, profile, searchResults],
+    [feedbackWeights, profile, searchResults, stories],
   );
 
   const stateName = profile ? US_STATE_NAMES[profile.state] : undefined;
@@ -417,6 +434,7 @@ export default function FeedPage() {
                     onToggleSaved={toggleSaved}
                     signal={feedback.get(reg.id) ?? null}
                     onSetSignal={(signal) => setRankingSignal(reg.id, signal)}
+                    whyReasons={buildWhyReasons(reg, profile, stories, feedbackWeights)}
                   />
                 ))}
                 {remaining > 0 && (

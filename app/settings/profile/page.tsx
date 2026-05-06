@@ -9,9 +9,10 @@ import { Field, TextInput, ChoiceGrid } from "@/components/onboarding/Field";
 import { TopicChips } from "@/components/onboarding/TopicChips";
 import {
   AGE_RANGES, INCOME_BRACKETS, HOUSEHOLD_STATUSES, US_STATES,
+  ALL_PROFILE_FLAGS, PROFILE_FLAG_LABELS,
   FREE_TEXT_CONTEXT_LIMIT,
   type AgeRange, type IncomeBracket, type HouseholdStatus, type Topic,
-  type UserProfile,
+  type ProfileFlag, type UserProfile,
 } from "@/lib/types";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 
@@ -28,6 +29,7 @@ export default function SettingsProfilePage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [freeTextContext, setFreeTextContext] = useState("");
   const [additionalStates, setAdditionalStates] = useState<string[]>([]);
+  const [profileFlags, setProfileFlags] = useState<ProfileFlag[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -44,6 +46,7 @@ export default function SettingsProfilePage() {
       setTopics(profile.topics);
       setFreeTextContext(profile.freeTextContext ?? "");
       setAdditionalStates(profile.additionalStates ?? []);
+      setProfileFlags(profile.profileFlags ?? []);
     }
   }, [profile, hydrated, router]);
 
@@ -60,6 +63,11 @@ export default function SettingsProfilePage() {
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
     );
 
+  const toggleFlag = (f: ProfileFlag) =>
+    setProfileFlags((prev) =>
+      prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
+    );
+
   const handleSave = async () => {
     if (!canSave || !ageRange || !state || !income || !household || saving) return;
     const trimmedName = displayName.trim();
@@ -74,6 +82,7 @@ export default function SettingsProfilePage() {
       topics,
       freeTextContext: trimmedContext || undefined,
       additionalStates: additionalStates.filter((s) => s !== state),
+      profileFlags: profileFlags.length > 0 ? profileFlags : undefined,
       createdAt: profile?.createdAt ?? new Date().toISOString(),
     };
     setSaving(true);
@@ -200,6 +209,36 @@ export default function SettingsProfilePage() {
               if nothing else should shape your feed.
             </p>
           </div>
+
+          <Field
+            label="Does any of this describe you?"
+            hint="Optional. Helps surface relevant rules even if you didn't select those topics."
+          >
+            <div className="flex flex-col gap-2">
+              {ALL_PROFILE_FLAGS.map((f) => {
+                const active = profileFlags.includes(f);
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => toggleFlag(f)}
+                    className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm text-left transition ${
+                      active
+                        ? "border-ink bg-ink text-cream-50 shadow-card"
+                        : "border-rule bg-paper text-ink hover:border-ink/40"
+                    }`}
+                  >
+                    <span
+                      className={`h-4 w-4 flex-shrink-0 rounded-full border-2 ${
+                        active ? "border-cream-50 bg-cream-50" : "border-ink/30"
+                      }`}
+                    />
+                    {PROFILE_FLAG_LABELS[f]}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
 
           <Field
             label="Other context"

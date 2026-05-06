@@ -135,6 +135,29 @@ export const US_STATE_NAMES: Record<string, string> = {
   DC: "the District of Columbia",
 };
 
+export type ProfileFlag =
+  | "chronic_illness"
+  | "caregiver"
+  | "immigrant"
+  | "veteran"
+  | "environmental_job";
+
+export const ALL_PROFILE_FLAGS: ProfileFlag[] = [
+  "chronic_illness",
+  "caregiver",
+  "immigrant",
+  "veteran",
+  "environmental_job",
+];
+
+export const PROFILE_FLAG_LABELS: Record<ProfileFlag, string> = {
+  chronic_illness: "Living with a chronic illness",
+  caregiver: "Caregiver (child, elder, or family member)",
+  immigrant: "Immigrant or navigating immigration",
+  veteran: "Veteran or active-duty family member",
+  environmental_job: "Work in an environment-dependent job",
+};
+
 export interface UserProfile {
   displayName?: string;
   ageRange: AgeRange;
@@ -145,6 +168,7 @@ export interface UserProfile {
   topics: Topic[];
   freeTextContext?: string;
   additionalStates?: string[];
+  profileFlags?: ProfileFlag[];
   createdAt: string;
 }
 

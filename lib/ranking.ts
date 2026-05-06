@@ -1,8 +1,11 @@
 import {
+  PROFILE_FLAG_LABELS,
   US_STATE_NAMES,
+  type ProfileFlag,
   type RankingSignal,
   type Regulation,
   type ScoredRegulation,
+  type Story,
   type Topic,
   type UserProfile,
 } from "./types";
@@ -62,9 +65,22 @@ const TOPIC_KEYWORDS: Record<Topic, string[]> = {
   ],
 };
 
+const FLAG_TOPICS: Record<ProfileFlag, Topic[]> = {
+  chronic_illness: ["Healthcare", "Disability"],
+  caregiver: ["Healthcare", "Disability"],
+  immigrant: ["Immigration"],
+  veteran: ["Veterans"],
+  environmental_job: ["Environment"],
+};
+
 export interface FeedbackWeights {
   agency: Map<string, number>;
   topic: Map<Topic, number>;
+}
+
+export interface WhyReason {
+  key: string;
+  text: string;
 }
 
 export function deriveWeights(
@@ -120,15 +136,49 @@ function semanticPoints(cosine: number | undefined): number {
   return Math.max(0, Math.min(6, ((cosine - 0.72) / 0.18) * 6));
 }
 
+function urgencyPoints(daysToClose: number): number {
+  if (daysToClose <= 0) return 0;
+  if (daysToClose <= 1) return 3;
+  if (daysToClose <= 3) return 2;
+  if (daysToClose <= 7) return 1.5;
+  if (daysToClose <= 14) return 1;
+  return 0;
+}
+
+function textTopicHits(text: string, topics: Topic[]): number {
+  const lower = text.toLowerCase();
+  let score = 0;
+  for (const topic of topics) {
+    const hits = (TOPIC_KEYWORDS[topic] ?? []).filter((k) => lower.includes(k)).length;
+    score += Math.min(hits, 2);
+  }
+  return score;
+}
+
+function storyTagBoost(matchedTopics: Topic[], stories: Story[]): number {
+  let boost = 0;
+  for (const story of stories) {
+    for (const tag of story.tags) {
+      if (matchedTopics.includes(tag)) {
+        boost += 2;
+        break;
+      }
+    }
+  }
+  return Math.min(boost, 4);
+}
+
 export function scoreRegulation(
   reg: Regulation,
   profile: UserProfile,
   weights?: FeedbackWeights,
+  stories?: Story[],
 ): ScoredRegulation {
   const text = `${reg.title} ${reg.summary} ${reg.documentType}`.toLowerCase();
   const matchedTopics: Topic[] = [];
   let baseScore = 0;
 
+  // Explicit topic matching
   for (const topic of profile.topics) {
     const keywords = TOPIC_KEYWORDS[topic] ?? [];
     const hits = keywords.filter((k) => text.includes(k)).length;
@@ -142,18 +192,47 @@ export function scoreRegulation(
     }
   }
 
-  // Recency bump: newer regs nudged up
+  // Occupation keyword scoring (capped at +2 per topic)
+  if (profile.occupation) {
+    baseScore += textTopicHits(profile.occupation, profile.topics);
+  }
+
+  // Free-text context keyword scoring (capped at +2 per topic)
+  if (profile.freeTextContext) {
+    baseScore += textTopicHits(profile.freeTextContext, profile.topics);
+  }
+
+  // Profile flag implied topic scoring
+  for (const flag of profile.profileFlags ?? []) {
+    const impliedTopics = FLAG_TOPICS[flag] ?? [];
+    for (const impliedTopic of impliedTopics) {
+      if (profile.topics.includes(impliedTopic)) continue; // already counted above
+      const keywords = TOPIC_KEYWORDS[impliedTopic] ?? [];
+      const hits = keywords.filter((k) => text.includes(k)).length;
+      if (hits > 0) {
+        if (!matchedTopics.includes(impliedTopic)) matchedTopics.push(impliedTopic);
+        baseScore += Math.min(hits, 2);
+      }
+      if (reg.topics.includes(impliedTopic)) {
+        baseScore += 2;
+        if (!matchedTopics.includes(impliedTopic)) matchedTopics.push(impliedTopic);
+      }
+    }
+  }
+
+  // Recency bump
   const days =
     (Date.now() - new Date(reg.postedDate).getTime()) / (1000 * 60 * 60 * 24);
   if (days < 7) baseScore += 1;
 
-  // Urgency bump: closing soon
+  // Graduated urgency
   const daysToClose =
     (new Date(reg.commentEndDate).getTime() - Date.now()) /
     (1000 * 60 * 60 * 24);
-  if (daysToClose < 14 && daysToClose > 0) baseScore += 1;
+  baseScore += urgencyPoints(daysToClose);
 
   baseScore += additionalStateBoost(reg, profile);
+  baseScore += storyTagBoost(matchedTopics, stories ?? []);
   baseScore += semanticPoints(reg.semanticScore);
   const score = baseScore + feedbackScore(reg, weights);
 
@@ -164,14 +243,14 @@ export function rankRegulations(
   regs: Regulation[],
   profile: UserProfile,
   weights?: FeedbackWeights,
+  stories?: Story[],
 ): ScoredRegulation[] {
   return regs
-    .map((r) => scoreRegulation(r, profile, weights))
+    .map((r) => scoreRegulation(r, profile, weights, stories))
     .sort((a, b) => b.score - a.score);
 }
 
 export function matchPercent(score: number, profileTopicCount: number): number {
-  // Cap topic-driven max at ~5 per topic (4 from list-match + buffer)
   const maxScore = Math.max(profileTopicCount * 5, 5) + 2;
   const pct = Math.min(99, Math.round((score / maxScore) * 100));
   return Math.max(40, pct);
@@ -189,4 +268,105 @@ export function formatDeadline(dateStr: string): string {
   if (days <= 30) return `Closes in ${days} days`;
   const d = new Date(dateStr);
   return `Closes ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+}
+
+export function buildWhyReasons(
+  reg: ScoredRegulation,
+  profile: UserProfile,
+  stories: Story[],
+  weights?: FeedbackWeights,
+): WhyReason[] {
+  const reasons: WhyReason[] = [];
+  const text = `${reg.title} ${reg.summary}`;
+
+  // Most specific: primary state mention
+  if (profile.state && textMentionsState(text, profile.state)) {
+    const stateName = US_STATE_NAMES[profile.state] ?? profile.state;
+    reasons.push({ key: "state", text: `Mentions ${stateName}` });
+  }
+
+  // Story tag matches
+  for (const story of stories) {
+    for (const tag of story.tags) {
+      if (reg.matchedTopics.includes(tag)) {
+        reasons.push({
+          key: `story-${story.id}`,
+          text: `Your story "${story.title}" covers ${tag}`,
+        });
+        break;
+      }
+    }
+  }
+
+  // Feedback: agency thumbs up
+  if (weights) {
+    const agencyWeight = weights.agency.get(reg.agencyId) ?? 0;
+    if (agencyWeight > 0) {
+      reasons.push({
+        key: "feedback-agency",
+        text: `You've liked rules from ${reg.agencyName} before`,
+      });
+    }
+  }
+
+  // Occupation keyword match
+  if (profile.occupation) {
+    const occLower = profile.occupation.toLowerCase();
+    const hasOccMatch = reg.matchedTopics.some((t) =>
+      (TOPIC_KEYWORDS[t] ?? []).some((k) => occLower.includes(k)),
+    );
+    if (hasOccMatch) {
+      reasons.push({
+        key: "occupation",
+        text: `Relevant to ${profile.occupation}`,
+      });
+    }
+  }
+
+  // Profile flag matches
+  for (const flag of profile.profileFlags ?? []) {
+    const impliedTopics = FLAG_TOPICS[flag] ?? [];
+    if (impliedTopics.some((t) => reg.matchedTopics.includes(t))) {
+      reasons.push({
+        key: `flag-${flag}`,
+        text: PROFILE_FLAG_LABELS[flag],
+      });
+    }
+  }
+
+  // Topic interest matches
+  for (const topic of reg.matchedTopics) {
+    if (profile.topics.includes(topic)) {
+      reasons.push({ key: `topic-${topic}`, text: `Matches your ${topic} interest` });
+    }
+  }
+
+  // Urgency (only if closing very soon — otherwise it's noise)
+  const daysToClose =
+    (new Date(reg.commentEndDate).getTime() - Date.now()) /
+    (1000 * 60 * 60 * 24);
+  if (daysToClose > 0 && daysToClose <= 7) {
+    const d = Math.ceil(daysToClose);
+    reasons.push({
+      key: "urgency",
+      text: d === 1 ? "Closes tomorrow" : `Closes in ${d} days`,
+    });
+  }
+
+  // Recency
+  const daysSincePosted =
+    (Date.now() - new Date(reg.postedDate).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSincePosted < 7) {
+    reasons.push({ key: "recency", text: "Posted this week" });
+  }
+
+  // Deduplicate by key and return top 3
+  const seen = new Set<string>();
+  return reasons
+    .filter((r) => {
+      if (seen.has(r.key)) return false;
+      seen.add(r.key);
+      return true;
+    })
+    .slice(0, 3);
 }
