@@ -7,12 +7,15 @@ import { ArrowLeft, Check } from "lucide-react";
 import { useProfile } from "@/context/ProfileContext";
 import { Field, TextInput, ChoiceGrid } from "@/components/onboarding/Field";
 import { TopicChips } from "@/components/onboarding/TopicChips";
+import { TagInput } from "@/components/onboarding/TagInput";
 import {
   AGE_RANGES, INCOME_BRACKETS, HOUSEHOLD_STATUSES, US_STATES,
   ALL_PROFILE_FLAGS, PROFILE_FLAG_LABELS,
   FREE_TEXT_CONTEXT_LIMIT,
+  COMMON_AGENCIES,
+  SITUATION_PROMPTS, SITUATION_CHAR_LIMIT,
   type AgeRange, type IncomeBracket, type HouseholdStatus, type Topic,
-  type ProfileFlag, type UserProfile,
+  type ProfileFlag, type Situation, type SituationType, type UserProfile,
 } from "@/lib/types";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 
@@ -27,6 +30,9 @@ export default function SettingsProfilePage() {
   const [income, setIncome] = useState<IncomeBracket | null>(null);
   const [household, setHousehold] = useState<HouseholdStatus | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [trackingKeywords, setTrackingKeywords] = useState<string[]>([]);
+  const [followedAgencies, setFollowedAgencies] = useState<string[]>([]);
+  const [situations, setSituations] = useState<Situation[]>([]);
   const [freeTextContext, setFreeTextContext] = useState("");
   const [additionalStates, setAdditionalStates] = useState<string[]>([]);
   const [profileFlags, setProfileFlags] = useState<ProfileFlag[]>([]);
@@ -44,6 +50,9 @@ export default function SettingsProfilePage() {
       setIncome(profile.income);
       setHousehold(profile.household);
       setTopics(profile.topics);
+      setTrackingKeywords(profile.trackingKeywords ?? []);
+      setFollowedAgencies(profile.followedAgencies ?? []);
+      setSituations(profile.situations ?? []);
       setFreeTextContext(profile.freeTextContext ?? "");
       setAdditionalStates(profile.additionalStates ?? []);
       setProfileFlags(profile.profileFlags ?? []);
@@ -68,6 +77,20 @@ export default function SettingsProfilePage() {
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
     );
 
+  const toggleAgency = (id: string) =>
+    setFollowedAgencies((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
+    );
+
+  const updateSituation = (type: SituationType, text: string) => {
+    setSituations((prev) => {
+      const without = prev.filter((s) => s.type !== type);
+      if (!text) return without;
+      const existing = prev.find((s) => s.type === type);
+      return [...without, { id: existing?.id ?? crypto.randomUUID(), type, text }];
+    });
+  };
+
   const handleSave = async () => {
     if (!canSave || !ageRange || !state || !income || !household || saving) return;
     const trimmedName = displayName.trim();
@@ -83,6 +106,9 @@ export default function SettingsProfilePage() {
       freeTextContext: trimmedContext || undefined,
       additionalStates: additionalStates.filter((s) => s !== state),
       profileFlags: profileFlags.length > 0 ? profileFlags : undefined,
+      trackingKeywords: trackingKeywords.length > 0 ? trackingKeywords : undefined,
+      followedAgencies: followedAgencies.length > 0 ? followedAgencies : undefined,
+      situations: situations.length > 0 ? situations : undefined,
       createdAt: profile?.createdAt ?? new Date().toISOString(),
     };
     setSaving(true);
@@ -201,12 +227,101 @@ export default function SettingsProfilePage() {
           </Field>
 
           <div className="border-t border-rule pt-7">
-            <h2 className="font-display text-2xl text-ink">
-              More context
-            </h2>
+            <h2 className="font-display text-2xl text-ink">Feed customization</h2>
             <p className="mt-2 text-sm text-ink-600">
-              Optional details used only for ranking and drafting. Leave blank
-              if nothing else should shape your feed.
+              Boost specific regulations and agencies above the broad topic matching.
+            </p>
+          </div>
+
+          <Field
+            label="Tracking keywords"
+            hint="Terms you want to follow specifically — e.g. 'insulin pricing', 'PFAS', 'Medicaid HCBS'. Press Enter after each one."
+          >
+            <TagInput
+              values={trackingKeywords}
+              onChange={setTrackingKeywords}
+              maxTags={20}
+              maxTagLength={40}
+              placeholder="Add a keyword…"
+            />
+          </Field>
+
+          <Field
+            label="Agencies to follow"
+            hint="Rules from these agencies will rank higher in your feed."
+          >
+            <div className="flex flex-wrap gap-2">
+              {COMMON_AGENCIES.map(({ id, name }) => {
+                const active = followedAgencies.includes(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => toggleAgency(id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                      active
+                        ? "border-ink bg-ink text-cream-50 shadow-card"
+                        : "border-rule bg-paper text-ink hover:border-ink/40"
+                    }`}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <div className="border-t border-rule pt-7">
+            <h2 className="font-display text-2xl text-ink">Your situation</h2>
+            <p className="mt-2 text-sm text-ink-600">
+              These get woven into your comment drafts so they read like they came from you.
+            </p>
+          </div>
+
+          <Field
+            label="Fill in any that apply"
+            hint="Each card adds specific personal context to your comment drafts."
+          >
+            <div className="space-y-3">
+              {(Object.entries(SITUATION_PROMPTS) as [SituationType, { label: string; placeholder: string }][]).map(
+                ([type, { label, placeholder }]) => {
+                  const existing = situations.find((s) => s.type === type);
+                  return (
+                    <div
+                      key={type}
+                      className="rounded-lg border border-rule bg-paper p-4"
+                    >
+                      <label className="mb-2 block text-sm font-medium text-ink">
+                        {label}
+                      </label>
+                      <textarea
+                        value={existing?.text ?? ""}
+                        onChange={(e) =>
+                          updateSituation(
+                            type,
+                            e.target.value.slice(0, SITUATION_CHAR_LIMIT),
+                          )
+                        }
+                        rows={3}
+                        placeholder={placeholder}
+                        className="w-full rounded-md border border-rule bg-paper/50 px-3 py-2 text-sm leading-relaxed text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                      />
+                      {existing && (
+                        <p className="mt-1 text-right font-mono text-xs text-muted">
+                          {existing.text.length}/{SITUATION_CHAR_LIMIT}
+                        </p>
+                      )}
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          </Field>
+
+          <div className="border-t border-rule pt-7">
+            <h2 className="font-display text-2xl text-ink">More context</h2>
+            <p className="mt-2 text-sm text-ink-600">
+              Optional details used only for ranking and drafting.
             </p>
           </div>
 

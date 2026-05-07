@@ -155,6 +155,19 @@ function textTopicHits(text: string, topics: Topic[]): number {
   return score;
 }
 
+function trackingKeywordBoost(text: string, keywords: string[]): number {
+  const lower = text.toLowerCase();
+  let boost = 0;
+  for (const kw of keywords) {
+    if (kw.trim() && lower.includes(kw.trim().toLowerCase())) boost += 3;
+  }
+  return Math.min(boost, 9);
+}
+
+function followedAgencyBoost(reg: Regulation, agencies: string[]): number {
+  return agencies.includes(reg.agencyId) ? 5 : 0;
+}
+
 function storyTagBoost(matchedTopics: Topic[], stories: Story[]): number {
   let boost = 0;
   for (const story of stories) {
@@ -232,6 +245,8 @@ export function scoreRegulation(
   baseScore += urgencyPoints(daysToClose);
 
   baseScore += additionalStateBoost(reg, profile);
+  baseScore += trackingKeywordBoost(text, profile.trackingKeywords ?? []);
+  baseScore += followedAgencyBoost(reg, profile.followedAgencies ?? []);
   baseScore += storyTagBoost(matchedTopics, stories ?? []);
   baseScore += semanticPoints(reg.semanticScore);
   const score = baseScore + feedbackScore(reg, weights);
@@ -283,6 +298,18 @@ export function buildWhyReasons(
   if (profile.state && textMentionsState(text, profile.state)) {
     const stateName = US_STATE_NAMES[profile.state] ?? profile.state;
     reasons.push({ key: "state", text: `Mentions ${stateName}` });
+  }
+
+  // Tracking keyword matches (high specificity)
+  for (const kw of profile.trackingKeywords ?? []) {
+    if (kw.trim() && text.toLowerCase().includes(kw.trim().toLowerCase())) {
+      reasons.push({ key: `kw-${kw}`, text: `Mentions "${kw}"` });
+    }
+  }
+
+  // Followed agency
+  if ((profile.followedAgencies ?? []).includes(reg.agencyId)) {
+    reasons.push({ key: "agency-follow", text: `You follow ${reg.agencyName}` });
   }
 
   // Story tag matches

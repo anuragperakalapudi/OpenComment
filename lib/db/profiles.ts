@@ -1,4 +1,4 @@
-import type { ProfileFlag, UserProfile } from "../types";
+import type { ProfileFlag, Situation, UserProfile } from "../types";
 import { parseVector, vectorToSql } from "../embeddingInputs";
 import { supabaseAdmin } from "./client";
 
@@ -14,6 +14,9 @@ interface DbProfileRow {
   free_text_context: string | null;
   additional_states: string[] | null;
   profile_flags: string[] | null;
+  tracking_keywords: string[] | null;
+  followed_agencies: string[] | null;
+  situations: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +41,9 @@ function rowToProfile(row: DbProfileRow): UserProfile {
     freeTextContext: row.free_text_context ?? undefined,
     additionalStates: row.additional_states ?? [],
     profileFlags: (row.profile_flags ?? []) as ProfileFlag[],
+    trackingKeywords: (row.tracking_keywords ?? []) as string[],
+    followedAgencies: (row.followed_agencies ?? []) as string[],
+    situations: (row.situations as Situation[] | null) ?? [],
     createdAt: row.created_at,
   };
 }
@@ -98,6 +104,9 @@ export async function upsertProfile(
         free_text_context: profile.freeTextContext ?? null,
         additional_states: profile.additionalStates ?? [],
         profile_flags: profile.profileFlags ?? [],
+        tracking_keywords: profile.trackingKeywords ?? [],
+        followed_agencies: profile.followedAgencies ?? [],
+        situations: profile.situations ?? [],
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },

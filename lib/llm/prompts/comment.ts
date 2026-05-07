@@ -1,4 +1,4 @@
-import type { Regulation, Story, UserProfile } from "@/lib/types";
+import { SITUATION_PROMPTS, type Regulation, type UserProfile } from "@/lib/types";
 
 export type CommentVariant = "balanced" | "shorter" | "personal";
 
@@ -39,8 +39,8 @@ Forbidden:
 - Any sentence over 35 words.
 - Stating support or opposition with no reason grounded in the user's life.
 - Inventing facts. Use only what's in the USER PROFILE and RULE sections.
-- If USER STORIES are provided, use them only when relevant. Do not invent
-  experiences beyond the story text.
+- If USER SITUATIONS are provided, use them only when relevant. Do not invent
+  experiences beyond what the user wrote.
 
 If the user has thin context, write a thinner comment. Don't pad.`;
 
@@ -48,7 +48,6 @@ export function buildCommentPrompt(
   reg: Regulation,
   profile: UserProfile,
   variant: CommentVariant,
-  stories: Story[] = [],
 ): { systemInstruction: string; prompt: string } {
   const directive = VARIANT_DIRECTIVES[variant];
 
@@ -70,14 +69,11 @@ export function buildCommentPrompt(
   }
   const profileBlock = profileLines.join("\n");
 
-  const storyBlock = stories.length
-    ? stories
-        .map((story, i) =>
-          [
-            `Story ${i + 1}: ${story.title}`,
-            `Topics: ${story.tags.join(", ") || "(none)"}`,
-            story.body,
-          ].join("\n"),
+  const situationBlock = (profile.situations ?? []).length > 0
+    ? (profile.situations ?? [])
+        .map(
+          (s, i) =>
+            `Situation ${i + 1} (${SITUATION_PROMPTS[s.type]?.label ?? s.type}): ${s.text}`,
         )
         .join("\n\n")
     : "";
@@ -107,18 +103,18 @@ export function buildCommentPrompt(
     `USER PROFILE`,
     profileBlock,
     "",
-    storyBlock ? `USER STORIES` : "",
-    storyBlock,
-    storyBlock
-      ? "Use story details only when they apply to this rule. Paraphrase rather than quote at length."
+    situationBlock ? `USER SITUATIONS` : "",
+    situationBlock,
+    situationBlock
+      ? "Use these only when they apply to this rule. Do not invent details beyond what the user wrote."
       : "",
-    storyBlock ? "" : "",
+    situationBlock ? "" : "",
     `RULE`,
     ruleBlock,
     "",
     `Output only the comment text. Do not include a salutation header,
 "Dear ...", a signature line, or commentary about the comment itself. Do
-not include section headers like "STORY:" or "ASK:". Plain prose only.`,
+not include section headers like "SITUATION:" or "ASK:". Plain prose only.`,
   ].join("\n");
 
   return { systemInstruction: SYSTEM_INSTRUCTION, prompt };

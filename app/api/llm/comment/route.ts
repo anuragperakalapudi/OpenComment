@@ -1,35 +1,17 @@
 import { NextResponse } from "next/server";
-import { currentUserId } from "@/lib/auth";
-import {
-  isClerkConfigured,
-  isLLMConfigured,
-  isSupabaseConfigured,
-} from "@/lib/config";
-import { listStories } from "@/lib/db/stories";
+import { isLLMConfigured } from "@/lib/config";
 import { currentModel, generate } from "@/lib/llm/client";
 import { generateWithGate } from "@/lib/llm/postprocess";
 import {
   buildCommentPrompt,
   type CommentVariant,
 } from "@/lib/llm/prompts/comment";
-import { selectRelevantStories } from "@/lib/stories";
 import type { Regulation, UserProfile } from "@/lib/types";
 
 interface RequestBody {
   regulation: Regulation;
   profile: UserProfile;
   variant: CommentVariant;
-}
-
-async function relevantStoriesFor(regulation: Regulation) {
-  if (!isClerkConfigured || !isSupabaseConfigured) return [];
-  const userId = await currentUserId();
-  if (!userId) return [];
-  try {
-    return selectRelevantStories(await listStories(userId), regulation, 2);
-  } catch {
-    return [];
-  }
 }
 
 export async function POST(req: Request) {
@@ -41,12 +23,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
 
-  const stories = await relevantStoriesFor(body.regulation);
   const { systemInstruction, prompt } = buildCommentPrompt(
     body.regulation,
     body.profile,
     body.variant,
-    stories,
   );
 
   try {
@@ -55,7 +35,6 @@ export async function POST(req: Request) {
         generate(prompt, {
           task: "quality",
           systemInstruction,
-          // Higher temperature on retries to escape repeating bad output.
           temperature: 0.7 + attempt * 0.1,
           maxOutputTokens: 1500,
         }),

@@ -169,10 +169,64 @@ export interface UserProfile {
   freeTextContext?: string;
   additionalStates?: string[];
   profileFlags?: ProfileFlag[];
+  trackingKeywords?: string[];
+  followedAgencies?: string[];
+  situations?: Situation[];
   createdAt: string;
 }
 
 export const FREE_TEXT_CONTEXT_LIMIT = 500;
+
+export type SituationType = "livelihood" | "health" | "family" | "community";
+
+export interface Situation {
+  id: string;
+  type: SituationType;
+  text: string;
+}
+
+export const MAX_SITUATIONS = 4;
+export const SITUATION_CHAR_LIMIT = 300;
+
+export const SITUATION_PROMPTS: Record<SituationType, { label: string; placeholder: string }> = {
+  livelihood: {
+    label: "My livelihood",
+    placeholder: "I work as a home health aide and care for 3 patients daily. Changes to Medicaid reimbursement rates would cut my income.",
+  },
+  health: {
+    label: "My health",
+    placeholder: "I have Type 2 diabetes and rely on insulin. My medication costs $400/month without insurance.",
+  },
+  family: {
+    label: "My family",
+    placeholder: "I'm a single parent with two kids. We live in rural Texas, 45 minutes from the nearest hospital.",
+  },
+  community: {
+    label: "My community",
+    placeholder: "My neighborhood has high asthma rates due to a nearby facility. We've pushed for cleaner air for years.",
+  },
+};
+
+export const COMMON_AGENCIES: { id: string; name: string }[] = [
+  { id: "EPA", name: "EPA — Environmental Protection" },
+  { id: "HHS", name: "HHS — Health & Human Services" },
+  { id: "DOL", name: "DOL — Labor" },
+  { id: "CFPB", name: "CFPB — Consumer Finance" },
+  { id: "ED", name: "ED — Education" },
+  { id: "VA", name: "VA — Veterans Affairs" },
+  { id: "USCIS", name: "USCIS — Immigration" },
+  { id: "SBA", name: "SBA — Small Business" },
+  { id: "HUD", name: "HUD — Housing" },
+  { id: "DOT", name: "DOT — Transportation" },
+  { id: "FDA", name: "FDA — Food & Drug" },
+  { id: "CMS", name: "CMS — Medicare & Medicaid" },
+  { id: "FTC", name: "FTC — Trade Commission" },
+  { id: "DOJ", name: "DOJ — Justice" },
+  { id: "IRS", name: "IRS — Internal Revenue" },
+  { id: "OSHA", name: "OSHA — Occupational Safety" },
+  { id: "USDA", name: "USDA — Agriculture" },
+  { id: "ATF", name: "ATF — Alcohol Tobacco Firearms" },
+];
 
 export const MAX_STORIES = 5;
 
