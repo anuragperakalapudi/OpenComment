@@ -1,9 +1,13 @@
 "use client";
 
-import { Search, Settings2 } from "lucide-react";
+import { LogOut, Search, Settings2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { SignOutButton } from "@clerk/nextjs";
 import { Logo } from "@/components/shared/Logo";
 import { useProfile } from "@/context/ProfileContext";
+
+const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 interface FeedHeaderProps {
   query?: string;
@@ -11,7 +15,8 @@ interface FeedHeaderProps {
 }
 
 export function FeedHeader({ query = "", onQueryChange }: FeedHeaderProps) {
-  const { profile } = useProfile();
+  const { profile, reset } = useProfile();
+  const router = useRouter();
   const initialsSource =
     profile?.displayName?.trim() || profile?.occupation || "OC";
   const initials = initialsSource
@@ -60,6 +65,27 @@ export function FeedHeader({ query = "", onQueryChange }: FeedHeaderProps) {
         >
           {initials}
         </Link>
+        {isClerkConfigured ? (
+          <SignOutButton redirectUrl="/">
+            <button
+              type="button"
+              onClick={() => reset()}
+              aria-label="Sign out"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-rule text-muted transition hover:border-ink/40 hover:text-ink"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </SignOutButton>
+        ) : (
+          <button
+            type="button"
+            onClick={async () => { await reset(); router.push("/"); }}
+            aria-label="Sign out"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-rule text-muted transition hover:border-ink/40 hover:text-ink"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </header>
   );

@@ -12,6 +12,7 @@ const isProtectedRoute = createRouteMatcher([
   "/saved(.*)",
   "/activity(.*)",
   "/settings(.*)",
+  "/onboarding(.*)",
 ]);
 
 // When Clerk env vars are absent we run a passthrough middleware so the dev

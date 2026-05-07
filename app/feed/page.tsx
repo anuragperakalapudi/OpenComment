@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { SlidersHorizontal, Sparkles } from "lucide-react";
 import { useProfile } from "@/context/ProfileContext";
 import {
   buildWhyReasons,
@@ -24,6 +24,7 @@ import {
   FilterRail,
   EMPTY_FILTERS,
   isAnyFilterActive,
+  activeFilterCount,
   type FilterState,
 } from "@/components/feed/FilterRail";
 import { useSavedRegulations } from "@/hooks/useSavedRegulations";
@@ -93,6 +94,7 @@ export default function FeedPage() {
 
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const [stories, setStories] = useState<Story[]>([]);
 
@@ -275,6 +277,16 @@ export default function FeedPage() {
       // Default ranked feed: only show rules that scored against the profile.
       out = out.filter((r) => r.baseScore > 0);
     }
+    if (filters.sort === "closing_soonest") {
+      out = [...out].sort(
+        (a, b) => daysUntil(a.commentEndDate) - daysUntil(b.commentEndDate),
+      );
+    } else if (filters.sort === "newest_posted") {
+      out = [...out].sort(
+        (a, b) =>
+          new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime(),
+      );
+    }
     return out;
   }, [
     rankedSearchResults,
@@ -391,6 +403,23 @@ export default function FeedPage() {
           </p>
         </motion.div>
 
+        {/* Mobile filter trigger */}
+        <div className="mb-4 flex items-center gap-3 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-rule bg-paper px-4 py-2 text-sm font-medium text-ink hover:border-ink/40"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filters
+            {filtersActive && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-mono text-[10px] text-cream-50">
+                {activeFilterCount(filters)}
+              </span>
+            )}
+          </button>
+        </div>
+
         <div className="flex gap-10">
           <div className="min-w-0 flex-1 space-y-5">
             {(loading || searching) ? (
@@ -481,6 +510,36 @@ export default function FeedPage() {
             </div>
           </aside>
         </div>
+
+        {/* Mobile filter bottom-sheet */}
+        {filterSheetOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-ink/30 lg:hidden"
+              onClick={() => setFilterSheetOpen(false)}
+            />
+            <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-paper p-6 lg:hidden">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-sm font-medium text-ink">Filters</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterSheetOpen(false)}
+                  className="text-muted hover:text-ink"
+                  aria-label="Close filters"
+                >
+                  ✕
+                </button>
+              </div>
+              <FilterRail
+                filters={filters}
+                onChange={(f) => { setFilters(f); }}
+                agencyOptions={agencyOptions}
+                topicOptions={topicOptions}
+                stateLabel={stateLabel}
+              />
+            </div>
+          </>
+        )}
       </section>
     </main>
   );

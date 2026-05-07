@@ -29,7 +29,9 @@ export default function RegulationDetailPage() {
   const [reg, setReg] = useState<Regulation | null>(null);
   const [loading, setLoading] = useState(true);
   const { isSaved, toggle: toggleSaved } = useSavedRegulations();
-  const { isCommented } = useCommentedRegulations();
+  const { isCommented, mark } = useCommentedRegulations();
+  const [markPanelOpen, setMarkPanelOpen] = useState(false);
+  const [finalText, setFinalText] = useState("");
 
   // LLM summary state
   const [longSummary, setLongSummary] = useState<string | null>(null);
@@ -252,11 +254,20 @@ export default function RegulationDetailPage() {
             <span className="text-ink-600">{reg.agencyName}</span>
 
             <div className="ml-auto flex items-center gap-2">
-              {isCommented(reg.id) && (
+              {isCommented(reg.id) ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-forest-50 px-3 py-1.5 text-xs font-medium text-forest">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Commented
                 </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMarkPanelOpen((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-rule px-3 py-1.5 text-xs text-ink-600 transition hover:border-forest/40 hover:text-forest"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Mark as commented
+                </button>
               )}
               <button
                 type="button"
@@ -446,6 +457,45 @@ export default function RegulationDetailPage() {
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </div>
+
+              {/* Mark-as-commented panel */}
+              {!isCommented(reg.id) && markPanelOpen && (
+                <div className="mt-4 rounded-xl border border-rule bg-paper p-5">
+                  <p className="text-sm font-medium text-ink">
+                    Did you submit your comment?
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    Optionally paste what you actually submitted — helps you track what you said.
+                  </p>
+                  <textarea
+                    value={finalText}
+                    onChange={(e) => setFinalText(e.target.value)}
+                    placeholder="Paste your final submitted comment here (optional)…"
+                    rows={5}
+                    className="mt-3 w-full rounded-lg border border-rule bg-cream-50 px-3 py-2 font-mono text-xs text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                  />
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await mark(reg.id, finalText.trim() || null);
+                        setMarkPanelOpen(false);
+                        setFinalText("");
+                      }}
+                      className="rounded-full bg-forest px-4 py-1.5 text-xs font-medium text-cream-50 hover:bg-forest/90"
+                    >
+                      Mark as commented
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setMarkPanelOpen(false); setFinalText(""); }}
+                      className="rounded-full border border-rule px-4 py-1.5 text-xs text-ink-600 hover:border-ink/40"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.aside>
         </div>

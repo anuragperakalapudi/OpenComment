@@ -32,4 +32,8 @@ export const RESEND_FROM_EMAIL =
 export const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+export const isRedisConfigured =
+  !!process.env.UPSTASH_REDIS_REST_URL &&
+  !!process.env.UPSTASH_REDIS_REST_TOKEN;
+
 export const NOT_CONFIGURED = "not_configured";

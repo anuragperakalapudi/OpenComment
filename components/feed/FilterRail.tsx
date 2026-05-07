@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal } from "lucide-rea
 import type { Topic } from "@/lib/types";
 
 export type DeadlineFilter = "week" | "month" | "any";
+export type SortOption = "relevance" | "closing_soonest" | "newest_posted";
 
 export interface FilterState {
   agencies: string[];
@@ -12,6 +13,7 @@ export interface FilterState {
   deadline: DeadlineFilter;
   minMatch: number;
   stateRelevant: boolean;
+  sort: SortOption;
 }
 
 export const EMPTY_FILTERS: FilterState = {
@@ -20,6 +22,7 @@ export const EMPTY_FILTERS: FilterState = {
   deadline: "any",
   minMatch: 0,
   stateRelevant: false,
+  sort: "relevance",
 };
 
 export function isAnyFilterActive(f: FilterState): boolean {
@@ -29,6 +32,7 @@ export function isAnyFilterActive(f: FilterState): boolean {
     f.deadline !== "any" ||
     f.minMatch > 0 ||
     f.stateRelevant
+    // sort is intentionally excluded — it's always set
   );
 }
 
@@ -112,6 +116,33 @@ export function FilterRail({
             <RotateCcw className="h-3 w-3" /> Reset
           </button>
         )}
+      </div>
+
+      {/* Sort */}
+      <div className="mt-4">
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted">
+          Sort by
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {([
+            ["relevance", "Best match"],
+            ["closing_soonest", "Closing soonest"],
+            ["newest_posted", "Newest first"],
+          ] as [SortOption, string][]).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onChange({ ...filters, sort: value })}
+              className={`rounded-full border px-3 py-1.5 text-xs text-left transition ${
+                filters.sort === value
+                  ? "border-ink bg-ink text-cream-50"
+                  : "border-rule bg-paper text-ink hover:border-ink/40"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Deadline */}

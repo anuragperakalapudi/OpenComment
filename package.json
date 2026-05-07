@@ -12,6 +12,7 @@
     "@clerk/nextjs": "^6.39.3",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.104.1",
+    "@upstash/redis": "^1.38.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.11.0",
     "lucide-react": "^0.453.0",
@@ -20,6 +21,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "resend": "^6.12.2",
+    "svix": "^1.92.2",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {

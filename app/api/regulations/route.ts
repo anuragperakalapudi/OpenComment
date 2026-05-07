@@ -3,17 +3,11 @@ import { currentUserId } from "@/lib/auth";
 import { buildRegulationsUrl, mapApiResponse } from "@/lib/regulationsApi";
 import { isSupabaseConfigured } from "@/lib/config";
 import { getCachedShortSummaries } from "@/lib/db/cache";
+import { getCache, setCache } from "@/lib/redisCache";
 import { enrichRegulationsWithSemanticScores } from "@/lib/semantic";
 import type { Regulation } from "@/lib/types";
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
-interface CacheEntry<T = unknown> {
-  data: T;
-  expires: number;
-}
-
-const memCache = new Map<string, CacheEntry>();
+const CACHE_TTL_SECS = 300;
 
 async function withSemanticScores(payload: {
   regulations: Regulation[];
@@ -43,13 +37,9 @@ export async function GET(req: Request) {
     ? `search:${searchTerm.toLowerCase()}`
     : "all-open-proposed-rules";
 
-  const cached = memCache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) {
-    return NextResponse.json(await withSemanticScores(cached.data as {
-      regulations: Regulation[];
-      source: string;
-      error?: string;
-    }), {
+  const cached = await getCache<{ regulations: Regulation[]; source: string }>(cacheKey);
+  if (cached) {
+    return NextResponse.json(await withSemanticScores(cached), {
       headers: { "x-pca-cache": "hit" },
     });
   }
@@ -87,10 +77,7 @@ export async function GET(req: Request) {
       source: "api" as const,
     };
 
-    memCache.set(cacheKey, {
-      data: payload,
-      expires: Date.now() + CACHE_TTL_MS,
-    });
+    await setCache(cacheKey, payload, CACHE_TTL_SECS);
     return NextResponse.json(await withSemanticScores(payload), {
       headers: { "x-pca-cache": "miss" },
     });
