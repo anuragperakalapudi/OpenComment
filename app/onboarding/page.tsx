@@ -16,7 +16,7 @@ import {
   ALL_PROFILE_FLAGS, PROFILE_FLAG_LABELS,
   FREE_TEXT_CONTEXT_LIMIT,
   COMMON_AGENCIES,
-  SITUATION_PROMPTS, SITUATION_CHAR_LIMIT,
+  SITUATION_PROMPTS_ENTRIES, SITUATION_CHAR_LIMIT,
   type AgeRange, type IncomeBracket, type HouseholdStatus, type Topic,
   type ProfileFlag, type Situation, type SituationType, type UserProfile,
 } from "@/lib/types";
@@ -136,7 +136,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-6">
         <Logo />
         <span className="text-xs text-muted">Step {step} of {TOTAL_STEPS}</span>
@@ -384,7 +384,7 @@ export default function OnboardingPage() {
                     hint="Fill in any that apply. Each card adds personal context to your comment drafts."
                   >
                     <div className="space-y-3">
-                      {(Object.entries(SITUATION_PROMPTS) as [SituationType, { label: string; placeholder: string }][]).map(
+                      {SITUATION_PROMPTS_ENTRIES.map(
                         ([type, { label, placeholder }]) => {
                           const existing = situations.find((s) => s.type === type);
                           return (

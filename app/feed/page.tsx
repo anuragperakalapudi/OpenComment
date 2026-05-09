@@ -347,7 +347,7 @@ export default function FeedPage() {
   const isSearching = debouncedQuery.length > 0;
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <FeedHeader query={searchQuery} onQueryChange={setSearchQuery} />
 
       <section className="mx-auto max-w-6xl px-6 py-10">

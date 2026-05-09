@@ -46,7 +46,7 @@ export function TagInput({
 
   return (
     <div
-      className="flex min-h-[48px] flex-wrap items-center gap-2 rounded-md border border-rule bg-paper px-3 py-2 focus-within:border-accent"
+      className="flex min-h-[48px] cursor-text flex-wrap items-center gap-2 rounded-md border border-rule bg-paper px-3 py-2 focus-within:border-accent"
       onClick={() => inputRef.current?.focus()}
     >
       {values.map((tag) => (

@@ -174,7 +174,7 @@ export default function ActivityPage() {
         ) : (
           <ol className="relative space-y-5 border-l border-rule pl-6">
             {items.map((item) => (
-              <li key={`${item.kind}-${item.documentId}`} className="relative">
+              <li key={`${item.kind}-${item.documentId}-${item.date}`} className="relative">
                 <span
                   className={`absolute -left-[27px] top-2 flex h-4 w-4 items-center justify-center rounded-full ${
                     item.kind === "commented"

@@ -38,6 +38,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
           longSummary: cached.longSummary,
           keyProvisions: cached.keyProvisions,
+          affectedGroups: [],
           model: cached.modelVersion,
           cached: true,
         });
@@ -72,12 +73,21 @@ export async function POST(req: Request) {
 
     const provisions = parseProvisions(provisionsRaw);
 
+    // Parse and strip the AFFECTED: line from the long summary.
+    const affectedMatch = longResult.text.match(/^AFFECTED:\s*(.+)/im);
+    const affectedGroups = affectedMatch
+      ? affectedMatch[1].split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+    const longSummary = longResult.text
+      .replace(/^AFFECTED:.*(\r?\n)*/im, "")
+      .trim();
+
     if (isSupabaseConfigured) {
       try {
         await upsertRegulationCache({
           documentId: reg.id,
           docketId: reg.docketId,
-          longSummary: longResult.text,
+          longSummary,
           keyProvisions: provisions,
           modelVersion: currentModel("fast"),
         });
@@ -87,8 +97,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      longSummary: longResult.text,
+      longSummary,
       keyProvisions: provisions,
+      affectedGroups,
       model: currentModel("fast"),
       cached: false,
     });

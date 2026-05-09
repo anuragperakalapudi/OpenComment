@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Sparkles, RefreshCw, CheckCircle2, AlertTriangle, ExternalLink, Share2 } from "lucide-react";
 import type { Regulation, UserProfile } from "@/lib/types";
 import { buildComment, commentWordCount } from "@/lib/mock/commentTemplates";
 import { CopyButton } from "./CopyButton";
@@ -37,6 +37,17 @@ export function GeneratedComment({
   const { isCommented, mark, unmark, commented } = useCommentedRegulations();
   const [showMarkUI, setShowMarkUI] = useState(false);
   const [pasteback, setPasteback] = useState("");
+  const [copiedAndOpened, setCopiedAndOpened] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      if (shareTimer.current) clearTimeout(shareTimer.current);
+    };
+  }, []);
 
   // Synchronous fallback always available so we can render something
   // immediately while the AI draft is in flight.
@@ -102,10 +113,28 @@ export function GeneratedComment({
   const wasCommented = isCommented(reg.id);
 
   const handleMark = async (withPasteback: boolean) => {
-    await mark(reg.id, withPasteback ? pasteback.trim() || null : null);
+    await mark(reg.id, withPasteback ? pasteback.trim() || null : null, reg.docketId);
     setShowMarkUI(false);
     setPasteback("");
   };
+
+  async function handleShare() {
+    const shareUrl = `${window.location.origin}/regulation/${encodeURIComponent(reg.id)}`;
+    const closeDate = reg.commentEndDate.split("T")[0];
+    const shareText = `I just commented on "${reg.title}" — open comment period closes ${closeDate}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: reg.title, text: shareText, url: shareUrl });
+      } catch {
+        // AbortError = user cancelled — silent fail
+      }
+    } else {
+      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`).catch(() => {});
+      if (shareTimer.current) clearTimeout(shareTimer.current);
+      setShareCopied(true);
+      shareTimer.current = setTimeout(() => setShareCopied(false), 2500);
+    }
+  }
 
   const usingTemplate = llmText === null;
 
@@ -194,9 +223,14 @@ export function GeneratedComment({
         <span>
           {words} words · ~{Math.max(1, Math.round(words / 220))} min read
         </span>
-        <span className="italic">
-          We don&rsquo;t submit for you. You stay in control.
-        </span>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="inline-flex items-center gap-1.5 text-muted hover:text-ink"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          {shareCopied ? "Link copied" : "Share"}
+        </button>
       </div>
 
       {llmFlags.length > 0 && (
@@ -214,6 +248,22 @@ export function GeneratedComment({
           Draft service had trouble. Showing a fallback draft you can still edit.
         </p>
       )}
+
+      <a
+        href={reg.regulationsGovUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => {
+          navigator.clipboard.writeText(text).catch(() => {});
+          if (copiedTimer.current) clearTimeout(copiedTimer.current);
+          setCopiedAndOpened(true);
+          copiedTimer.current = setTimeout(() => setCopiedAndOpened(false), 4000);
+        }}
+        className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-cream-50 shadow-card hover:bg-accent-700"
+      >
+        <ExternalLink className="h-4 w-4" />
+        {copiedAndOpened ? "Copied — paste it when you arrive" : "Submit on regulations.gov"}
+      </a>
 
       {/* "I submitted this" UI */}
       <div className="rounded-xl border border-rule bg-paper p-5">

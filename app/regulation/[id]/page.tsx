@@ -36,6 +36,7 @@ export default function RegulationDetailPage() {
   // LLM summary state
   const [longSummary, setLongSummary] = useState<string | null>(null);
   const [keyProvisions, setKeyProvisions] = useState<string[] | null>(null);
+  const [affectedGroups, setAffectedGroups] = useState<string[]>([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [whyText, setWhyText] = useState<string | null>(null);
   const [whyCitations, setWhyCitations] = useState<Array<{ title: string }>>([]);
@@ -91,10 +92,12 @@ export default function RegulationDetailPage() {
         const json = (await r.json()) as {
           longSummary: string;
           keyProvisions: string[];
+          affectedGroups?: string[];
         };
         if (cancelled) return;
         setLongSummary(json.longSummary);
         setKeyProvisions(json.keyProvisions);
+        setAffectedGroups(json.affectedGroups ?? []);
         setSummaryLoading(false);
       })
       .catch(() => {
@@ -192,7 +195,7 @@ export default function RegulationDetailPage() {
   const closingSoon = days <= 7;
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <FeedHeader />
 
       <section className="mx-auto max-w-6xl px-6 pb-24 pt-10">
@@ -223,11 +226,6 @@ export default function RegulationDetailPage() {
             <span className="font-mono text-[11px] uppercase tracking-widest text-muted">
               Docket {reg.id}
             </span>
-            {reg.source === "mock" && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-rule px-2 py-0.5 text-[10px] uppercase tracking-widest text-muted">
-                Example entry
-              </span>
-            )}
           </div>
 
           <h1 className="headline mt-5 max-w-4xl text-[clamp(2rem,4vw,3.4rem)]">
@@ -271,7 +269,7 @@ export default function RegulationDetailPage() {
               )}
               <button
                 type="button"
-                onClick={() => toggleSaved(reg.id)}
+                onClick={() => toggleSaved(reg.id, reg.docketId)}
                 aria-pressed={isSaved(reg.id)}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
                   isSaved(reg.id)
@@ -293,15 +291,6 @@ export default function RegulationDetailPage() {
                 href={reg.regulationsGovUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => {
-                  // Mark in sessionStorage so we can prompt on return.
-                  if (typeof window !== "undefined") {
-                    window.sessionStorage.setItem(
-                      `pca:visited:${reg.id}`,
-                      String(Date.now()),
-                    );
-                  }
-                }}
                 className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-cream-50 shadow-card hover:bg-accent-700"
               >
                 Open on regulations.gov
@@ -342,6 +331,24 @@ export default function RegulationDetailPage() {
                 </p>
               )}
             </section>
+
+            {affectedGroups.length > 0 && (
+              <section>
+                <h2 className="text-xs font-medium uppercase tracking-widest text-muted">
+                  Who this affects
+                </h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {affectedGroups.map((group) => (
+                    <span
+                      key={group}
+                      className="inline-flex items-center rounded-full border border-accent/30 bg-accent-50/60 px-3 py-1 text-xs font-medium text-accent"
+                    >
+                      {group}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {((keyProvisions && keyProvisions.length > 0) ||
               (reg.provisions && reg.provisions.length > 0)) && (
@@ -407,7 +414,7 @@ export default function RegulationDetailPage() {
                       <span className="text-ink">
                         {reg.topics
                           .filter((t) => profile.topics.includes(t))
-                          .join(", ") || profile.topics[0]}
+                          .join(", ") || (profile.topics[0] ?? "your interests")}
                       </span>
                       , your location in{" "}
                       <span className="text-ink">{profile.state}</span>, and
@@ -478,7 +485,7 @@ export default function RegulationDetailPage() {
                     <button
                       type="button"
                       onClick={async () => {
-                        await mark(reg.id, finalText.trim() || null);
+                        await mark(reg.id, finalText.trim() || null, reg.docketId);
                         setMarkPanelOpen(false);
                         setFinalText("");
                       }}

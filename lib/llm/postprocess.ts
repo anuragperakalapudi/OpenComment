@@ -92,9 +92,13 @@ export async function generateWithGate(
   const max = opts.maxRetries ?? 2;
   let last: PostprocessResult | null = null;
   for (let attempt = 0; attempt <= max; attempt++) {
-    const raw = await gen(attempt);
-    last = postprocess(raw);
-    if (last.ok) return last;
+    try {
+      const raw = await gen(attempt);
+      last = postprocess(raw);
+      if (last.ok) return last;
+    } catch {
+      // LLM call failed — continue to next attempt
+    }
   }
-  return last!;
+  return last ?? { text: "", ok: false, flags: ["generation_failed"] };
 }

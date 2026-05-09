@@ -38,6 +38,7 @@ export function FeedHeader({ query = "", onQueryChange }: FeedHeaderProps) {
             value={query}
             onChange={(e) => onQueryChange?.(e.target.value)}
             placeholder="Search open federal rules…"
+            aria-label="Search open federal rules"
             readOnly={!interactive}
             className="w-full rounded-full border border-rule bg-paper px-10 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
           />

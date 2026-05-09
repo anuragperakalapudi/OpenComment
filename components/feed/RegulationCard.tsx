@@ -31,7 +31,7 @@ export function RegulationCard({
   index: number;
   saved: boolean;
   commented: boolean;
-  onToggleSaved: (documentId: string) => void;
+  onToggleSaved: (documentId: string, docketId?: string) => void;
   signal?: RankingSignal | null;
   onSetSignal?: (signal: RankingSignal | null) => void;
   whyReasons?: WhyReason[];
@@ -47,7 +47,7 @@ export function RegulationCard({
   const handleSaveClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onToggleSaved(reg.id);
+    onToggleSaved(reg.id, reg.docketId);
   };
 
   const handleSignalClick =

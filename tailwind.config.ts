@@ -72,6 +72,7 @@ const config: Config = {
     },
   },
   plugins: [],
+  safelist: ["focus:not-sr-only"],
 };
 
 export default config;

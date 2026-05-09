@@ -4,7 +4,12 @@ const SYSTEM = `You explain a federal proposed rule to someone who has not
 read it and may never have read one before. They have a high school
 education and a busy life.
 
-Output exactly three paragraphs separated by blank lines:
+First, output one line starting with "AFFECTED:" followed by 3–6
+comma-separated short phrases naming who is most directly affected
+(e.g. "AFFECTED: home health agencies, Medicaid recipients, rural providers").
+Keep each phrase under 5 words. No explanations on this line.
+
+Then output exactly three paragraphs separated by blank lines:
 1. What the rule does, in concrete terms. Open with the change.
 2. Who is affected and how. Use specific job titles, household types,
    dollar amounts where the rule names them.
@@ -22,8 +27,8 @@ Hard rules:
 - If the rule is technical and you cannot fairly summarize without losing
   fidelity, say so. Better to admit complexity than oversimplify.
 
-Output only the three paragraphs. No headers, no preamble, no quotes around
-the output.`;
+Output only the AFFECTED: line and the three paragraphs. No headers, no
+preamble, no quotes around the output.`;
 
 export function buildLongSummaryPrompt(reg: Regulation): {
   systemInstruction: string;

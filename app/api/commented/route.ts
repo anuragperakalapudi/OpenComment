@@ -6,6 +6,7 @@ import {
   markCommented,
   unmarkCommented,
 } from "@/lib/db/commented";
+import { addDocketWatch } from "@/lib/db/docketWatch";
 
 function notConfigured() {
   return NextResponse.json({ error: "not_configured" }, { status: 501 });
@@ -33,14 +34,18 @@ export async function POST(req: Request) {
   if (!isClerkConfigured || !isSupabaseConfigured) return notConfigured();
   const userId = await currentUserId();
   if (!userId) return unauthorized();
-  const { documentId, commentText } = (await req.json()) as {
+  const { documentId, commentText, docketId } = (await req.json()) as {
     documentId?: string;
     commentText?: string | null;
+    docketId?: string;
   };
-  if (!documentId) {
-    return NextResponse.json({ error: "missing documentId" }, { status: 400 });
+  if (!documentId || documentId.length > 512) {
+    return NextResponse.json({ error: "invalid documentId" }, { status: 400 });
   }
   await markCommented(userId, documentId, commentText ?? null);
+  if (docketId) {
+    try { await addDocketWatch(userId, docketId); } catch { /* non-fatal */ }
+  }
   return NextResponse.json({ ok: true });
 }
 

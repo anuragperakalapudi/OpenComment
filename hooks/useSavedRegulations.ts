@@ -26,7 +26,7 @@ interface UseSavedRegulations {
   saved: Set<string>;
   hydrated: boolean;
   isSaved: (documentId: string) => boolean;
-  toggle: (documentId: string) => Promise<void>;
+  toggle: (documentId: string, docketId?: string) => Promise<void>;
 }
 
 export function useSavedRegulations(): UseSavedRegulations {
@@ -70,7 +70,7 @@ export function useSavedRegulations(): UseSavedRegulations {
   );
 
   const toggle = useCallback(
-    async (documentId: string) => {
+    async (documentId: string, docketId?: string) => {
       const wasSaved = saved.has(documentId);
       const next = new Set(saved);
       if (wasSaved) next.delete(documentId);
@@ -84,7 +84,7 @@ export function useSavedRegulations(): UseSavedRegulations {
         await fetch("/api/saved", {
           method: wasSaved ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId }),
+          body: JSON.stringify({ documentId, docketId }),
         });
       } catch {
         // Revert on network error.

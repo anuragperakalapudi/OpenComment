@@ -159,7 +159,8 @@ function trackingKeywordBoost(text: string, keywords: string[]): number {
   const lower = text.toLowerCase();
   let boost = 0;
   for (const kw of keywords) {
-    if (kw.trim() && lower.includes(kw.trim().toLowerCase())) boost += 3;
+    const trimmed = kw.trim();
+    if (trimmed && lower.includes(trimmed.toLowerCase())) boost += 3;
   }
   return Math.min(boost, 9);
 }
@@ -266,6 +267,7 @@ export function rankRegulations(
 }
 
 export function matchPercent(score: number, profileTopicCount: number): number {
+  if (score <= 0) return 0;
   const maxScore = Math.max(profileTopicCount * 5, 5) + 2;
   const pct = Math.min(99, Math.round((score / maxScore) * 100));
   return Math.max(40, pct);
@@ -301,9 +303,11 @@ export function buildWhyReasons(
   }
 
   // Tracking keyword matches (high specificity)
+  const textLower = text.toLowerCase();
   for (const kw of profile.trackingKeywords ?? []) {
-    if (kw.trim() && text.toLowerCase().includes(kw.trim().toLowerCase())) {
-      reasons.push({ key: `kw-${kw}`, text: `Mentions "${kw}"` });
+    const trimmed = kw.trim();
+    if (trimmed && textLower.includes(trimmed.toLowerCase())) {
+      reasons.push({ key: `kw-${trimmed}`, text: `Mentions "${trimmed}"` });
     }
   }
 

@@ -32,7 +32,7 @@ interface UseCommentedRegulations {
   commented: Map<string, CommentedEntry>;
   hydrated: boolean;
   isCommented: (documentId: string) => boolean;
-  mark: (documentId: string, commentText?: string | null) => Promise<void>;
+  mark: (documentId: string, commentText?: string | null, docketId?: string) => Promise<void>;
   unmark: (documentId: string) => Promise<void>;
   list: () => CommentedEntry[];
 }
@@ -80,7 +80,7 @@ export function useCommentedRegulations(): UseCommentedRegulations {
   );
 
   const mark = useCallback(
-    async (documentId: string, commentText: string | null = null) => {
+    async (documentId: string, commentText: string | null = null, docketId?: string) => {
       const newEntry: CommentedEntry = {
         documentId,
         markedAt: new Date().toISOString(),
@@ -98,7 +98,7 @@ export function useCommentedRegulations(): UseCommentedRegulations {
         await fetch("/api/commented", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId, commentText }),
+          body: JSON.stringify({ documentId, commentText, docketId }),
         });
       } catch {
         // Local state already updated.

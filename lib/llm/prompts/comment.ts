@@ -69,8 +69,9 @@ export function buildCommentPrompt(
   }
   const profileBlock = profileLines.join("\n");
 
-  const situationBlock = (profile.situations ?? []).length > 0
-    ? (profile.situations ?? [])
+  const situations = profile.situations ?? [];
+  const situationBlock = situations.length > 0
+    ? situations
         .map(
           (s, i) =>
             `Situation ${i + 1} (${SITUATION_PROMPTS[s.type]?.label ?? s.type}): ${s.text}`,
@@ -108,7 +109,6 @@ export function buildCommentPrompt(
     situationBlock
       ? "Use these only when they apply to this rule. Do not invent details beyond what the user wrote."
       : "",
-    situationBlock ? "" : "",
     `RULE`,
     ruleBlock,
     "",

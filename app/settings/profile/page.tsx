@@ -13,7 +13,7 @@ import {
   ALL_PROFILE_FLAGS, PROFILE_FLAG_LABELS,
   FREE_TEXT_CONTEXT_LIMIT,
   COMMON_AGENCIES,
-  SITUATION_PROMPTS, SITUATION_CHAR_LIMIT,
+  SITUATION_PROMPTS_ENTRIES, SITUATION_CHAR_LIMIT,
   type AgeRange, type IncomeBracket, type HouseholdStatus, type Topic,
   type ProfileFlag, type Situation, type SituationType, type UserProfile,
 } from "@/lib/types";
@@ -138,7 +138,7 @@ export default function SettingsProfilePage() {
   }
 
   return (
-    <main className="min-h-screen">
+    <main id="main-content" className="min-h-screen">
       <FeedHeader />
 
       <section className="mx-auto max-w-2xl px-6 py-10">
@@ -283,7 +283,7 @@ export default function SettingsProfilePage() {
             hint="Each card adds specific personal context to your comment drafts."
           >
             <div className="space-y-3">
-              {(Object.entries(SITUATION_PROMPTS) as [SituationType, { label: string; placeholder: string }][]).map(
+              {SITUATION_PROMPTS_ENTRIES.map(
                 ([type, { label, placeholder }]) => {
                   const existing = situations.find((s) => s.type === type);
                   return (

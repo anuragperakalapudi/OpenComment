@@ -38,6 +38,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${fraunces.variable} ${interTight.variable}`}>
       <body>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:text-cream-50"
+        >
+          Skip to main content
+        </a>
         <AuthShell>
           <ProfileProvider>{children}</ProfileProvider>
         </AuthShell>

@@ -158,25 +158,6 @@ export const PROFILE_FLAG_LABELS: Record<ProfileFlag, string> = {
   environmental_job: "Work in an environment-dependent job",
 };
 
-export interface UserProfile {
-  displayName?: string;
-  ageRange: AgeRange;
-  occupation: string;
-  state: string;
-  income: IncomeBracket;
-  household: HouseholdStatus;
-  topics: Topic[];
-  freeTextContext?: string;
-  additionalStates?: string[];
-  profileFlags?: ProfileFlag[];
-  trackingKeywords?: string[];
-  followedAgencies?: string[];
-  situations?: Situation[];
-  createdAt: string;
-}
-
-export const FREE_TEXT_CONTEXT_LIMIT = 500;
-
 export type SituationType = "livelihood" | "health" | "family" | "community";
 
 export interface Situation {
@@ -207,6 +188,11 @@ export const SITUATION_PROMPTS: Record<SituationType, { label: string; placehold
   },
 };
 
+export const SITUATION_PROMPTS_ENTRIES = Object.entries(SITUATION_PROMPTS) as [
+  SituationType,
+  { label: string; placeholder: string },
+][];
+
 export const COMMON_AGENCIES: { id: string; name: string }[] = [
   { id: "EPA", name: "EPA — Environmental Protection" },
   { id: "HHS", name: "HHS — Health & Human Services" },
@@ -227,6 +213,25 @@ export const COMMON_AGENCIES: { id: string; name: string }[] = [
   { id: "USDA", name: "USDA — Agriculture" },
   { id: "ATF", name: "ATF — Alcohol Tobacco Firearms" },
 ];
+
+export interface UserProfile {
+  displayName?: string;
+  ageRange: AgeRange;
+  occupation: string;
+  state: string;
+  income: IncomeBracket;
+  household: HouseholdStatus;
+  topics: Topic[];
+  freeTextContext?: string;
+  additionalStates?: string[];
+  profileFlags?: ProfileFlag[];
+  trackingKeywords?: string[];
+  followedAgencies?: string[];
+  situations?: Situation[];
+  createdAt: string;
+}
+
+export const FREE_TEXT_CONTEXT_LIMIT = 500;
 
 export const MAX_STORIES = 5;
 
@@ -257,7 +262,7 @@ export interface Regulation {
   provisions?: string[];
   semanticScore?: number;
   regulationsGovUrl: string;
-  source: "api" | "mock";
+  source: "api";
 }
 
 export interface ScoredRegulation extends Regulation {
