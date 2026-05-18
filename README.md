@@ -1,7 +1,7 @@
 # OpenComment
 
 A civic web application that surfaces federal proposed rules from regulations.gov, ranks them against a user's profile, and helps the user submit a substantive public comment to the federal record.
-
+ 
 Stack: Next.js 14 App Router, TypeScript, Clerk, Supabase Postgres, Gemini, Vercel Cron, Resend.
 
 ## Status
