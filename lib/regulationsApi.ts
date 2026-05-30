@@ -158,7 +158,7 @@ export function buildRegulationsUrl(searchTerm?: string): string {
   // substring search over the cached 250-doc pool when the API returns 0.
   const params = new URLSearchParams();
   params.set("filter[documentType]", "Proposed Rule");
-  params.set("filter[commentEndDate][ge]", new Date().toISOString().slice(0, 10));
+  params.set("filter[withinCommentPeriod]", "true");
   params.set("sort", "-postedDate");
   params.set("page[size]", "250");
   if (searchTerm && searchTerm.trim()) {
